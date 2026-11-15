@@ -9,7 +9,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   var API_URL = "https://api.deepseek.com/chat/completions";
   var MAX_FILAS_IA = 500,
     LOTE_IA = 20;
-  var SYSTEM = "Eres un asistente integrado en Microsoft Excel. Responde siempre en español, claro y breve.\n" + "Recibirás los datos de la hoja activa del usuario (completos si son pocos, o una muestra de las primeras filas) y a veces su selección.\n" + "- Si solo hace una pregunta o pide un análisis, responde con texto normal. Si te piden un cálculo sobre una muestra, sugiere la fórmula en texto.\n" + "- Si pide crear, agregar o calcular una columna, responde ÚNICAMENTE con líneas, una por cada columna nueva:\n" + "COLUMNA|Encabezado|Fórmula\n" + "La fórmula se escribe para la PRIMERA FILA DE DATOS indicada en el contexto, con referencias relativas, empieza con =, usa nombres de función en INGLÉS y comas como separador. Ejemplo: COLUMNA|Total|=B2*C2\n" + "- Si la columna requiere interpretar texto y no se puede con fórmulas (clasificar, resumir, traducir, sentimiento, extraer datos), usa:\n" + "COLUMNA_IA|Encabezado|Instrucción que se aplicará a cada fila\n" + "- Opcionalmente puedes poner antes una línea: TEXTO|explicación breve\n" + "No uses bloques de código ni markdown en las líneas de acción.";
+  var SYSTEM = "Eres un asistente integrado en Microsoft Excel. Responde siempre en español, claro y breve.\n" + "Recibirás los datos de la hoja activa del usuario (completos si son pocos, o una muestra de las primeras filas) y a veces su selección.\n" + "- Si solo hace una pregunta o pide un análisis, responde con texto normal. Si te piden un cálculo sobre una muestra, sugiere la fórmula en texto.\n" + "- Si pide crear, agregar o calcular una columna, responde ÚNICAMENTE con líneas, una por cada columna nueva:\n" + "COLUMNA|Encabezado|Fórmula\n" + "La fórmula se escribe para la PRIMERA FILA DE DATOS indicada en el contexto, con referencias relativas, empieza con =, usa nombres de función en INGLÉS y comas como separador. Ejemplo: COLUMNA|Total|=B2*C2\n" + "- Si la columna requiere interpretar texto y no se puede con fórmulas (clasificar, resumir, traducir, sentimiento, extraer datos), usa:\n" + "COLUMNA_IA|Encabezado|Instrucción que se aplicará a cada fila\n" + "- Opcionalmente puedes poner antes una línea: TEXTO|explicación breve\n" + "- Si el usuario adjunta una imagen (tabla, factura, captura, gráfico), léela con cuidado. Si pide pasar sus datos a Excel, responde (con TEXTO| opcional antes) así:\n" + "TABLA|CeldaInicial\n" + "valor1 | valor2 | valor3   (una fila por línea; la primera suele ser de encabezados)\n" + "FIN_TABLA\n" + "Elige una CeldaInicial vacía que no pise datos existentes: A1 si la hoja está vacía, o la 'primera celda libre' indicada en el contexto.\n" + "No uses bloques de código ni markdown en las líneas de acción.";
   var $ = function $(id) {
     return document.getElementById(id);
   };
@@ -18,7 +18,9 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     sendBtn = $("send");
   var history = [],
     busy = false,
-    mem = {};
+    mem = {},
+    adjuntos = [];
+  var MAX_IMG = 4;
 
   // ---------- almacenamiento ----------
   var store = {
@@ -82,13 +84,21 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   function scrollDown() {
     chat.scrollTop = chat.scrollHeight;
   }
-  function addMsg(role, text, isErr) {
+  function addMsg(role, text, isErr, imgs) {
     var d = document.createElement("div");
     d.className = "msg " + role + (isErr ? " err" : "");
     var t = document.createElement("div");
     t.className = "txt";
     t.innerHTML = md(text);
     d.appendChild(t);
+    if (imgs && imgs.length) {
+      for (var k = 0; k < imgs.length; k++) {
+        var im = document.createElement("img");
+        im.className = "pic";
+        im.src = imgs[k].url;
+        d.appendChild(im);
+      }
+    }
     chat.appendChild(d);
     scrollDown();
     return d;
@@ -155,7 +165,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                   }
                 }, _callee);
               }));
-              return function (_x11) {
+              return function (_x12) {
                 return _ref.apply(this, arguments);
               };
             }());
@@ -297,7 +307,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                         _context4.n = 2;
                         break;
                       }
-                      return _context4.a(2, "\n\n[HOJA ACTIVA: " + ws.name + "] La hoja está vacía.");
+                      return _context4.a(2, "\n\n[HOJA ACTIVA: " + ws.name + "] La hoja está vacía (primera celda libre: A1).");
                     case 2:
                       cols = Math.min(ur.columnCount, 40);
                       completo = ur.rowCount <= 200 && ur.rowCount * cols <= 4000;
@@ -315,7 +325,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                       hdr = part.values[0].map(function (h, i) {
                         return colLetter(ur.columnIndex + i) + "=" + h;
                       }).join("; ");
-                      t = "\n\n[HOJA ACTIVA: " + ws.name + "] Rango de datos: " + ur.address + " (" + ur.rowCount + " filas x " + ur.columnCount + " columnas).\n" + "Fila de encabezados: " + (ur.rowIndex + 1) + ". PRIMERA FILA DE DATOS: " + (ur.rowIndex + 2) + ".\n" + "Columnas: " + hdr + "\n" + (completo ? "Datos completos:" : "Solo una muestra (hay más filas):") + "\n";
+                      t = "\n\n[HOJA ACTIVA: " + ws.name + "] Rango de datos: " + ur.address + " (" + ur.rowCount + " filas x " + ur.columnCount + " columnas).\n" + "Fila de encabezados: " + (ur.rowIndex + 1) + ". PRIMERA FILA DE DATOS: " + (ur.rowIndex + 2) + ".\n" + "Primera celda libre (dejando una columna vacía a la derecha de los datos): " + colLetter(ur.columnIndex + ur.columnCount + 1) + (ur.rowIndex + 1) + "\n" + "Columnas: " + hdr + "\n" + (completo ? "Datos completos:" : "Solo una muestra (hay más filas):") + "\n";
                       for (r = 0; r < part.values.length; r++) {
                         t += "Fila " + (ur.rowIndex + 1 + r) + ": " + part.values[r].join(" | ") + "\n";
                       }
@@ -329,7 +339,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                   }
                 }, _callee4);
               }));
-              return function (_x12) {
+              return function (_x13) {
                 return _ref2.apply(this, arguments);
               };
             }()));
@@ -341,11 +351,29 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   function parseResponse(raw) {
     var lines = raw.replace(/\r/g, "").split("\n"),
       text = [],
-      actions = [];
+      actions = [],
+      tabla = null;
     lines.forEach(function (l) {
       var ln = l.trim();
+      if (tabla) {
+        if (/^FIN_?TABLA/i.test(ln)) {
+          actions.push(tabla);
+          tabla = null;
+          return;
+        }
+        if (ln && ln.indexOf("```") !== 0) tabla.rows.push(ln);
+        return;
+      }
       if (!ln || ln.indexOf("```") === 0) return;
       var up = ln.toUpperCase();
+      if (up.indexOf("TABLA|") === 0) {
+        tabla = {
+          type: "tabla",
+          cell: ln.split("|")[1].trim(),
+          rows: []
+        };
+        return;
+      }
       if (up.indexOf("COLUMNA_IA|") === 0 || up.indexOf("COLUMNA|") === 0) {
         var p = ln.split("|");
         if (p.length >= 3) {
@@ -363,6 +391,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       }
       text.push(l);
     });
+    if (tabla && tabla.rows.length) actions.push(tabla); // por si faltó FIN_TABLA
     var t = text.join("\n").trim();
     if (!actions.length) t = raw.trim();
     return {
@@ -370,21 +399,111 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       actions: actions
     };
   }
-
-  // ---------- acciones en Excel ----------
-  function estiloEncabezado(_x5, _x6, _x7, _x8, _x9) {
+  function escribirTabla(_x5) {
+    return _escribirTabla.apply(this, arguments);
+  } // ---------- acciones en Excel ----------
+  function _escribirTabla() {
+    _escribirTabla = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(a) {
+      var cell, rows, nc, values;
+      return _regenerator().w(function (_context7) {
+        while (1) switch (_context7.n) {
+          case 0:
+            needExcel();
+            cell = a.cell.replace(/\$/g, "").toUpperCase();
+            if (/^[A-Z]{1,3}[0-9]{1,7}$/.test(cell)) {
+              _context7.n = 1;
+              break;
+            }
+            throw new Error("Celda inicial inválida: " + a.cell);
+          case 1:
+            rows = a.rows.map(function (r) {
+              var c = r.split("|").map(function (x) {
+                return x.trim();
+              });
+              if (c.length > 1 && c[0] === "") c = c.slice(1);
+              if (c.length > 1 && c[c.length - 1] === "") c = c.slice(0, -1);
+              return c;
+            }).filter(function (c) {
+              var sep = c.every(function (x) {
+                return /^:?-{2,}:?$/.test(x);
+              });
+              var vacia = c.every(function (x) {
+                return x === "";
+              });
+              return !sep && !vacia;
+            });
+            if (rows.length) {
+              _context7.n = 2;
+              break;
+            }
+            throw new Error("La tabla vino vacía.");
+          case 2:
+            nc = Math.max.apply(null, rows.map(function (r) {
+              return r.length;
+            }));
+            values = rows.map(function (r) {
+              var out = [];
+              for (var j = 0; j < nc; j++) {
+                var v = j < r.length ? r[j] : "";
+                out.push(/^[=@]/.test(v) ? "'" + v : v);
+              }
+              return out;
+            });
+            return _context7.a(2, Excel.run(/*#__PURE__*/function () {
+              var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(ctx) {
+                var ws, rng, ocupado;
+                return _regenerator().w(function (_context6) {
+                  while (1) switch (_context6.n) {
+                    case 0:
+                      ws = ctx.workbook.worksheets.getActiveWorksheet();
+                      rng = ws.getRange(cell).getResizedRange(rows.length - 1, nc - 1);
+                      rng.load(["values", "address"]);
+                      _context6.n = 1;
+                      return ctx.sync();
+                    case 1:
+                      ocupado = rng.values.some(function (f) {
+                        return f.some(function (v) {
+                          return v !== "";
+                        });
+                      });
+                      if (!ocupado) {
+                        _context6.n = 2;
+                        break;
+                      }
+                      throw new Error("El destino " + rng.address + " ya tiene datos. Pídeme otra ubicación (por ejemplo, otra celda inicial).");
+                    case 2:
+                      rng.values = values;
+                      ws.getRange(cell).getResizedRange(0, nc - 1).format.font.bold = true;
+                      rng.format.autofitColumns();
+                      _context6.n = 3;
+                      return ctx.sync();
+                    case 3:
+                      return _context6.a(2, "Tabla escrita en " + cell + " (" + rows.length + " filas × " + nc + " columnas)");
+                  }
+                }, _callee6);
+              }));
+              return function (_x14) {
+                return _ref3.apply(this, arguments);
+              };
+            }()));
+        }
+      }, _callee7);
+    }));
+    return _escribirTabla.apply(this, arguments);
+  }
+  function estiloEncabezado(_x6, _x7, _x8, _x9, _x0) {
     return _estiloEncabezado.apply(this, arguments);
   }
   function _estiloEncabezado() {
-    _estiloEncabezado = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6(ctx, ws, ur, col, texto) {
+    _estiloEncabezado = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8(ctx, ws, ur, col, texto) {
       var prev, h, f;
-      return _regenerator().w(function (_context6) {
-        while (1) switch (_context6.n) {
+      return _regenerator().w(function (_context8) {
+        while (1) switch (_context8.n) {
           case 0:
             prev = ws.getRangeByIndexes(ur.rowIndex, col - 1, 1, 1);
             prev.format.font.load("bold,color");
             prev.format.fill.load("color");
-            _context6.n = 1;
+            _context8.n = 1;
             return ctx.sync();
           case 1:
             h = ws.getRangeByIndexes(ur.rowIndex, col, 1, 1);
@@ -394,37 +513,37 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
             f = prev.format.fill.color;
             if (f && f.toUpperCase() !== "#FFFFFF") h.format.fill.color = f;
           case 2:
-            return _context6.a(2);
+            return _context8.a(2);
         }
-      }, _callee6);
+      }, _callee8);
     }));
     return _estiloEncabezado.apply(this, arguments);
   }
-  function columnaFormula(_x0) {
+  function columnaFormula(_x1) {
     return _columnaFormula.apply(this, arguments);
   }
   function _columnaFormula() {
-    _columnaFormula = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee8(a) {
+    _columnaFormula = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0(a) {
       var formula;
-      return _regenerator().w(function (_context8) {
-        while (1) switch (_context8.n) {
+      return _regenerator().w(function (_context0) {
+        while (1) switch (_context0.n) {
           case 0:
             needExcel();
             formula = a.arg.charAt(0) === "=" ? a.arg : "=" + a.arg;
-            return _context8.a(2, Excel.run(/*#__PURE__*/function () {
-              var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7(ctx) {
+            return _context0.a(2, Excel.run(/*#__PURE__*/function () {
+              var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9(ctx) {
                 var ws, ur, col, first, r1, arr, i;
-                return _regenerator().w(function (_context7) {
-                  while (1) switch (_context7.n) {
+                return _regenerator().w(function (_context9) {
+                  while (1) switch (_context9.n) {
                     case 0:
                       ws = ctx.workbook.worksheets.getActiveWorksheet();
                       ur = ws.getUsedRange(true);
                       ur.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
-                      _context7.n = 1;
+                      _context9.n = 1;
                       return ctx.sync();
                     case 1:
                       if (!(ur.rowCount < 2)) {
-                        _context7.n = 2;
+                        _context9.n = 2;
                         break;
                       }
                       throw new Error("No hay filas de datos.");
@@ -432,17 +551,17 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                       col = ur.columnIndex + ur.columnCount;
                       first = ws.getRangeByIndexes(ur.rowIndex + 1, col, 1, 1);
                       first.formulas = [[formula]];
-                      _context7.n = 3;
+                      _context9.n = 3;
                       return ctx.sync();
                     case 3:
                       // si la fórmula es inválida falla aquí sin dejar nada escrito
 
                       first.load("formulasR1C1");
-                      _context7.n = 4;
+                      _context9.n = 4;
                       return ctx.sync();
                     case 4:
                       r1 = first.formulasR1C1[0][0];
-                      _context7.n = 5;
+                      _context9.n = 5;
                       return estiloEncabezado(ctx, ws, ur, col, a.header);
                     case 5:
                       if (ur.rowCount > 2) {
@@ -451,19 +570,19 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                         ws.getRangeByIndexes(ur.rowIndex + 2, col, ur.rowCount - 2, 1).formulasR1C1 = arr;
                       }
                       ws.getRangeByIndexes(ur.rowIndex, col, ur.rowCount, 1).format.autofitColumns();
-                      _context7.n = 6;
+                      _context9.n = 6;
                       return ctx.sync();
                     case 6:
-                      return _context7.a(2, "Columna «" + a.header + "» creada en " + colLetter(col) + " (" + formula + ")");
+                      return _context9.a(2, "Columna «" + a.header + "» creada en " + colLetter(col) + " (" + formula + ")");
                   }
-                }, _callee7);
+                }, _callee9);
               }));
-              return function (_x13) {
-                return _ref3.apply(this, arguments);
+              return function (_x15) {
+                return _ref4.apply(this, arguments);
               };
             }()));
         }
-      }, _callee8);
+      }, _callee0);
     }));
     return _columnaFormula.apply(this, arguments);
   }
@@ -480,31 +599,31 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     while (arr.length < n) arr.push("");
     return arr.slice(0, n);
   }
-  function columnaIA(_x1, _x10) {
+  function columnaIA(_x10, _x11) {
     return _columnaIA.apply(this, arguments);
   } // ---------- flujo principal ----------
   function _columnaIA() {
-    _columnaIA = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0(a, onProgress) {
-      return _regenerator().w(function (_context0) {
-        while (1) switch (_context0.n) {
+    _columnaIA = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee10(a, onProgress) {
+      return _regenerator().w(function (_context10) {
+        while (1) switch (_context10.n) {
           case 0:
             needExcel();
-            return _context0.a(2, Excel.run(/*#__PURE__*/function () {
-              var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee9(ctx) {
+            return _context10.a(2, Excel.run(/*#__PURE__*/function () {
+              var _ref5 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1(ctx) {
                 var ws, ur, rows, n, col, headers, s, chunk, payload, content, raw, arr;
-                return _regenerator().w(function (_context9) {
-                  while (1) switch (_context9.n) {
+                return _regenerator().w(function (_context1) {
+                  while (1) switch (_context1.n) {
                     case 0:
                       ws = ctx.workbook.worksheets.getActiveWorksheet();
                       ur = ws.getUsedRange(true);
                       ur.load(["rowIndex", "columnIndex", "rowCount", "columnCount", "values"]);
-                      _context9.n = 1;
+                      _context1.n = 1;
                       return ctx.sync();
                     case 1:
                       rows = ur.values;
                       n = Math.min(rows.length - 1, MAX_FILAS_IA);
                       if (!(n < 1)) {
-                        _context9.n = 2;
+                        _context1.n = 2;
                         break;
                       }
                       throw new Error("No hay filas de datos.");
@@ -513,16 +632,16 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                       headers = rows[0].map(function (h, i) {
                         return String(h) || colLetter(ur.columnIndex + i);
                       });
-                      _context9.n = 3;
+                      _context1.n = 3;
                       return estiloEncabezado(ctx, ws, ur, col, a.header);
                     case 3:
-                      _context9.n = 4;
+                      _context1.n = 4;
                       return ctx.sync();
                     case 4:
                       s = 0;
                     case 5:
                       if (!(s < n)) {
-                        _context9.n = 8;
+                        _context1.n = 8;
                         break;
                       }
                       onProgress(s + " de " + n + " filas");
@@ -535,7 +654,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                         return o;
                       });
                       content = "Instrucción: " + a.arg + "\n\nFilas (JSON):\n" + JSON.stringify(payload) + "\n\nDevuelve SOLO un arreglo JSON con exactamente " + chunk.length + " strings cortos, uno por fila y en el mismo orden. Sin explicaciones ni markdown.";
-                      _context9.n = 6;
+                      _context1.n = 6;
                       return callDeepSeek([{
                         role: "system",
                         content: "Eres un asistente de procesamiento de datos. Respondes únicamente con JSON válido."
@@ -544,88 +663,116 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
                         content: content
                       }], "deepseek-chat");
                     case 6:
-                      raw = _context9.v;
+                      raw = _context1.v;
                       arr = parseJsonArray(raw, chunk.length);
                       ws.getRangeByIndexes(ur.rowIndex + 1 + s, col, chunk.length, 1).values = arr.map(function (v) {
                         return [v];
                       });
-                      _context9.n = 7;
+                      _context1.n = 7;
                       return ctx.sync();
                     case 7:
                       s += LOTE_IA;
-                      _context9.n = 5;
+                      _context1.n = 5;
                       break;
                     case 8:
                       ws.getRangeByIndexes(ur.rowIndex, col, n + 1, 1).format.autofitColumns();
-                      _context9.n = 9;
+                      _context1.n = 9;
                       return ctx.sync();
                     case 9:
-                      return _context9.a(2, "Columna IA «" + a.header + "» creada en " + colLetter(col) + " (" + n + " filas)" + (rows.length - 1 > n ? ". Se procesaron solo las primeras " + MAX_FILAS_IA + "." : ""));
+                      return _context1.a(2, "Columna IA «" + a.header + "» creada en " + colLetter(col) + " (" + n + " filas)" + (rows.length - 1 > n ? ". Se procesaron solo las primeras " + MAX_FILAS_IA + "." : ""));
                   }
-                }, _callee9);
+                }, _callee1);
               }));
-              return function (_x14) {
-                return _ref4.apply(this, arguments);
+              return function (_x16) {
+                return _ref5.apply(this, arguments);
               };
             }()));
         }
-      }, _callee0);
+      }, _callee10);
     }));
     return _columnaIA.apply(this, arguments);
   }
   function enviar() {
     return _enviar.apply(this, arguments);
-  } // ---------- eventos ----------
+  } // ---------- imágenes adjuntas ----------
   function _enviar() {
-    _enviar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
-      var q, bub, ctxText, msgs, raw, parsed, i, a, li, msg, _t4, _t5, _t6, _t7;
-      return _regenerator().w(function (_context1) {
-        while (1) switch (_context1.p = _context1.n) {
+    _enviar = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee11() {
+      var q, imgs, bub, ctxText, pregunta, contenido, modelo, msgs, raw, parsed, i, a, nombre, li, msg, _t4, _t5, _t6, _t7;
+      return _regenerator().w(function (_context11) {
+        while (1) switch (_context11.p = _context11.n) {
           case 0:
             q = input.value.trim();
-            if (!(!q || busy)) {
-              _context1.n = 1;
+            imgs = adjuntos.slice();
+            if (!(!q && !imgs.length || busy)) {
+              _context11.n = 1;
               break;
             }
-            return _context1.a(2);
+            return _context11.a(2);
           case 1:
             busy = true;
             sendBtn.disabled = true;
             input.value = "";
-            addMsg("user", q);
+            adjuntos = [];
+            renderAdjuntos();
+            addMsg("user", q || "(imagen adjunta)", false, imgs);
             bub = addMsg("bot", "Pensando…");
-            _context1.p = 2;
+            _context11.p = 2;
             ctxText = "";
             if (!$("useData").checked) {
-              _context1.n = 6;
+              _context11.n = 6;
               break;
             }
-            _context1.p = 3;
-            _context1.n = 4;
+            _context11.p = 3;
+            _context11.n = 4;
             return getContext();
           case 4:
-            ctxText = _context1.v;
-            _context1.n = 6;
+            ctxText = _context11.v;
+            _context11.n = 6;
             break;
           case 5:
-            _context1.p = 5;
-            _t4 = _context1.v;
+            _context11.p = 5;
+            _t4 = _context11.v;
             ctxText = "\n\n[No pude leer la hoja: " + _t4.message + "]";
           case 6:
+            pregunta = q || "Describe esta imagen y extrae sus datos de forma ordenada.";
+            contenido = pregunta + ctxText, modelo = null;
+            if (imgs.length) {
+              contenido = [{
+                type: "text",
+                text: contenido
+              }].concat(imgs.map(function (im) {
+                return {
+                  type: "image_url",
+                  image_url: {
+                    url: im.url
+                  }
+                };
+              }));
+              modelo = store.get("ds_vmodel") || "deepseek-v4-flash-vision-exp";
+            }
             msgs = [{
               role: "system",
               content: SYSTEM
             }].concat(history.slice(-8), [{
               role: "user",
-              content: q + ctxText
+              content: contenido
             }]);
-            _context1.n = 7;
-            return callDeepSeek(msgs);
-          case 7:
-            raw = _context1.v;
+            _context11.p = 7;
+            _context11.n = 8;
+            return callDeepSeek(msgs, modelo);
+          case 8:
+            raw = _context11.v;
+            _context11.n = 10;
+            break;
+          case 9:
+            _context11.p = 9;
+            _t5 = _context11.v;
+            if (imgs.length) _t5.message += " (Si el error es 400, revisa el 'Modelo para imágenes' en Ajustes.)";
+            throw _t5;
+          case 10:
             history.push({
               role: "user",
-              content: q
+              content: q + (imgs.length ? " [el usuario adjuntó " + imgs.length + " imagen(es)]" : "")
             }, {
               role: "assistant",
               content: raw
@@ -633,66 +780,142 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
             parsed = parseResponse(raw);
             if (parsed.text) setBubble(bub, parsed.text);else bub.querySelector(".txt").textContent = "Listo, voy a aplicar los cambios:";
             i = 0;
-          case 8:
+          case 11:
             if (!(i < parsed.actions.length)) {
-              _context1.n = 16;
+              _context11.n = 21;
               break;
             }
             a = parsed.actions[i];
-            li = addAct(bub, "Creando «" + a.header + "»…");
-            _context1.p = 9;
-            if (!(a.type === "ia")) {
-              _context1.n = 11;
+            nombre = a.type === "tabla" ? "tabla en " + a.cell : "«" + a.header + "»";
+            li = addAct(bub, "Creando " + nombre + "…");
+            _context11.p = 12;
+            if (!(a.type === "tabla")) {
+              _context11.n = 14;
               break;
             }
-            _context1.n = 10;
-            return columnaIA(a, function (p) {
-              actState(li, "run", "«" + a.header + "»: " + p);
-            });
-          case 10:
-            _t5 = _context1.v;
-            _context1.n = 13;
-            break;
-          case 11:
-            _context1.n = 12;
-            return columnaFormula(a);
-          case 12:
-            _t5 = _context1.v;
+            _context11.n = 13;
+            return escribirTabla(a);
           case 13:
-            msg = _t5;
-            actState(li, "ok", msg);
-            _context1.n = 15;
+            msg = _context11.v;
+            _context11.n = 18;
             break;
           case 14:
-            _context1.p = 14;
-            _t6 = _context1.v;
-            actState(li, "bad", "«" + a.header + "»: " + _t6.message);
+            if (!(a.type === "ia")) {
+              _context11.n = 16;
+              break;
+            }
+            _context11.n = 15;
+            return columnaIA(a, function (p) {
+              actState(li, "run", nombre + ": " + p);
+            });
           case 15:
-            i++;
-            _context1.n = 8;
+            msg = _context11.v;
+            _context11.n = 18;
             break;
           case 16:
-            _context1.n = 18;
-            break;
+            _context11.n = 17;
+            return columnaFormula(a);
           case 17:
-            _context1.p = 17;
-            _t7 = _context1.v;
-            setBubble(bub, _t7.message, true);
+            msg = _context11.v;
           case 18:
-            _context1.p = 18;
+            actState(li, "ok", msg);
+            _context11.n = 20;
+            break;
+          case 19:
+            _context11.p = 19;
+            _t6 = _context11.v;
+            actState(li, "bad", nombre + ": " + _t6.message);
+          case 20:
+            i++;
+            _context11.n = 11;
+            break;
+          case 21:
+            _context11.n = 23;
+            break;
+          case 22:
+            _context11.p = 22;
+            _t7 = _context11.v;
+            setBubble(bub, _t7.message, true);
+          case 23:
+            _context11.p = 23;
             busy = false;
             sendBtn.disabled = false;
             input.focus();
-            return _context1.f(18);
-          case 19:
-            return _context1.a(2);
+            return _context11.f(23);
+          case 24:
+            return _context11.a(2);
         }
-      }, _callee1, null, [[9, 14], [3, 5], [2, 17, 18, 19]]);
+      }, _callee11, null, [[12, 19], [7, 9], [3, 5], [2, 22, 23, 24]]);
     }));
     return _enviar.apply(this, arguments);
   }
+  function procesarArchivo(file) {
+    if (!file) return;
+    var esImg = /^image\//i.test(file.type || "") || /\.(jpe?g|png|gif|webp|bmp)$/i.test(file.name || "");
+    if (!esImg) {
+      addMsg("bot", "Solo puedo adjuntar imágenes (JPG, PNG, GIF, WebP).", true);
+      return;
+    }
+    if (adjuntos.length >= MAX_IMG) {
+      addMsg("bot", "Máximo " + MAX_IMG + " imágenes por mensaje.", true);
+      return;
+    }
+    var fr = new FileReader();
+    fr.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        var max = 1568,
+          w = img.width,
+          h = img.height,
+          k = Math.min(1, max / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * k));
+        c.height = Math.max(1, Math.round(h * k));
+        var g = c.getContext("2d");
+        g.fillStyle = "#ffffff";
+        g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        adjuntos.push({
+          url: c.toDataURL("image/jpeg", 0.85)
+        });
+        renderAdjuntos();
+      };
+      img.onerror = function () {
+        addMsg("bot", "No pude leer esa imagen (formato no compatible con este Office).", true);
+      };
+      img.src = fr.result;
+    };
+    fr.onerror = function () {
+      addMsg("bot", "No pude abrir el archivo.", true);
+    };
+    fr.readAsDataURL(file);
+  }
+  function renderAdjuntos() {
+    var box = $("adj");
+    box.innerHTML = "";
+    adjuntos.forEach(function (a, idx) {
+      var d = document.createElement("span");
+      d.className = "thumb";
+      var im = document.createElement("img");
+      im.src = a.url;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = "×";
+      b.title = "Quitar";
+      b.onclick = function () {
+        adjuntos.splice(idx, 1);
+        renderAdjuntos();
+      };
+      d.appendChild(im);
+      d.appendChild(b);
+      box.appendChild(d);
+    });
+  }
+
+  // ---------- eventos ----------
   function init() {
     $("key").value = store.get("ds_key");
+    $("vmodel").value = store.get("ds_vmodel") || "deepseek-v4-flash-vision-exp";
     $("model").value = store.get("ds_model") || "deepseek-chat";
     $("useData").checked = store.get("ds_usedata") !== "0";
     if (!store.get("ds_key")) $("settings").classList.add("open");
@@ -702,6 +925,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     $("save").onclick = function () {
       store.set("ds_key", $("key").value.trim());
       store.set("ds_model", $("model").value);
+      store.set("ds_vmodel", $("vmodel").value.trim() || "deepseek-v4-flash-vision-exp");
       store.set("ds_usedata", $("useData").checked ? "1" : "0");
       $("settings").classList.remove("open");
       addMsg("bot", "Ajustes guardados. ¡Ya puedes preguntarme!");
@@ -709,8 +933,38 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     $("clear").onclick = function () {
       chat.innerHTML = "";
       history = [];
+      adjuntos = [];
+      renderAdjuntos();
       greet();
     };
+    $("attach").onclick = function () {
+      $("file").click();
+    };
+    $("file").onchange = function () {
+      var fl = this.files;
+      for (var i = 0; i < fl.length; i++) procesarArchivo(fl[i]);
+      try {
+        this.value = "";
+      } catch (e) {}
+    };
+    input.addEventListener("paste", function (e) {
+      var items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].kind === "file" && /^image\//.test(items[i].type)) {
+          procesarArchivo(items[i].getAsFile());
+          e.preventDefault();
+        }
+      }
+    });
+    document.addEventListener("dragover", function (e) {
+      e.preventDefault();
+    });
+    document.addEventListener("drop", function (e) {
+      e.preventDefault();
+      var fl = e.dataTransfer && e.dataTransfer.files;
+      if (fl) for (var i = 0; i < fl.length; i++) procesarArchivo(fl[i]);
+    });
     sendBtn.onclick = enviar;
     input.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -732,7 +986,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     greet();
   }
   function greet() {
-    addMsg("bot", "Hola 👋 Soy DeepSeek dentro de Excel. Pregúntame sobre tus datos o pídeme, por ejemplo, **«crea una columna con el total»**: la agrego directamente a tu hoja.");
+    addMsg("bot", "Hola 👋 Soy DeepSeek dentro de Excel. Pregúntame sobre tus datos, pídeme **«crea una columna con el total»** o adjunta una imagen con 📎 (también puedes pegarla o arrastrarla) y te paso su tabla a Excel.");
   }
   if (window.Office && Office.onReady) {
     Office.onReady(function () {
