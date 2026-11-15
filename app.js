@@ -9,7 +9,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
   var API_URL = "https://api.deepseek.com/chat/completions";
   var MAX_FILAS_IA = 500,
     LOTE_IA = 20;
-  var SYSTEM = "Eres un asistente integrado en Microsoft Excel. Responde siempre en español, claro y breve.\n" + "Recibirás los datos de la hoja activa del usuario (completos si son pocos, o una muestra de las primeras filas) y a veces su selección.\n" + "- Si solo hace una pregunta o pide un análisis, responde con texto normal. Si te piden un cálculo sobre una muestra, sugiere la fórmula en texto.\n" + "- Si pide crear, agregar o calcular una columna, responde ÚNICAMENTE con líneas, una por cada columna nueva:\n" + "COLUMNA|Encabezado|Fórmula\n" + "La fórmula se escribe para la PRIMERA FILA DE DATOS indicada en el contexto, con referencias relativas, empieza con =, usa nombres de función en INGLÉS y comas como separador. Ejemplo: COLUMNA|Total|=B2*C2\n" + "- Si la columna requiere interpretar texto y no se puede con fórmulas (clasificar, resumir, traducir, sentimiento, extraer datos), usa:\n" + "COLUMNA_IA|Encabezado|Instrucción que se aplicará a cada fila\n" + "- Opcionalmente puedes poner antes una línea: TEXTO|explicación breve\n" + "- Si el usuario adjunta una imagen (tabla, factura, captura, gráfico), léela con cuidado. Si pide pasar sus datos a Excel, responde (con TEXTO| opcional antes) así:\n" + "TABLA|CeldaInicial\n" + "valor1 | valor2 | valor3   (una fila por línea; la primera suele ser de encabezados)\n" + "FIN_TABLA\n" + "Elige una CeldaInicial vacía que no pise datos existentes: A1 si la hoja está vacía, o la 'primera celda libre' indicada en el contexto.\n" + "No uses bloques de código ni markdown en las líneas de acción.";
+  var SYSTEM = "Eres un asistente integrado en Microsoft Excel. Responde siempre en español, claro y breve.\n" + "Recibirás los datos de la hoja activa del usuario (completos si son pocos, o una muestra de las primeras filas) y a veces su selección.\n" + "- Si solo hace una pregunta o pide un análisis, responde con texto normal. Si te piden un cálculo sobre una muestra, sugiere la fórmula en texto.\n" + "- Si pide crear, agregar o calcular una columna, responde ÚNICAMENTE con líneas, una por cada columna nueva:\n" + "COLUMNA|Encabezado|Fórmula\n" + "La fórmula se escribe para la PRIMERA FILA DE DATOS indicada en el contexto, con referencias relativas, empieza con =, usa nombres de función en INGLÉS y comas como separador. Ejemplo: COLUMNA|Total|=B2*C2\n" + "- Si la columna requiere interpretar texto y no se puede con fórmulas (clasificar, resumir, traducir, sentimiento, extraer datos), usa:\n" + "COLUMNA_IA|Encabezado|Instrucción que se aplicará a cada fila\n" + "- Opcionalmente puedes poner antes una línea: TEXTO|explicación breve\n" + "- Si el usuario adjunta una imagen (tabla, factura, captura, gráfico), léela con cuidado. Si pide pasar sus datos a Excel, responde (con TEXTO| opcional antes) así:\n" + "TABLA|CeldaInicial\n" + "valor1 | valor2 | valor3   (una fila por línea; la primera suele ser de encabezados)\n" + "FIN_TABLA\n" + "Elige una CeldaInicial vacía que no pise datos existentes: A1 si la hoja está vacía, o la 'primera celda libre' indicada en el contexto.\n" + "" + "\n" + "ACCIONES ADICIONALES (una por línea, formato exacto, sin markdown, sin espacios antes del verbo; no uses el carácter | dentro de los valores; todas actúan sobre la HOJA ACTIVA):\n" + "HOJA|Nombre → crea una hoja (pestaña) nueva con ese nombre y la deja activa. Úsala para separar secciones contables (Libro Mayor, Balance, Auxiliares, Enero, Febrero…).\n" + "COPIA_HOJA|HojaOrigen|NombreCopia → duplica una hoja completa con otro nombre (útil para repetir una estructura por mes o período).\n" + "BORRAR_HOJA|Nombre → elimina esa hoja (nunca si es la única del libro).\n" + "RENOMBRAR_HOJA|NombreActual|NombreNuevo → renombra una hoja.\n" + "GRAFICO|Tipo|Rango|Título → crea un gráfico debajo de los datos. Tipo ∈ lineas|columnas|barras|pastel|area|dispersion. El Rango DEBE incluir la fila de encabezados (ej. A1:D12). Elige el tipo que mejor muestre lo pedido (tendencia→lineas, comparación→columnas, proporciones→pastel).\n" + "TABLA_EXCEL|Rango|Nombre → convierte el rango (con encabezados) en una Tabla de Excel con filtros y estilo. Nombre opcional, sin espacios.\n" + "FORMATO|Rango|estilos → aplica formato. estilos van separados por coma, ej: FORMATO|B2:B100|moneda, negrita. Estilos: moneda, dolar, euro, porcentaje, fecha, hora, numero, entero, miles, texto, negrita, cursiva, subrayado, centro, izquierda, derecha, bordes, color=rojo|azul|#RRGGBB, fondo=amarillo|#FFF2CC, ajustar.\n" + "LIMPIAR|Accion|Rango → Accion ∈ espacios (quita espacios repetidos y de los extremos), duplicados (elimina filas idénticas), filas_vacias (elimina filas vacías), mayusculas, minusculas. El Rango es opcional: si falta, se aplica a toda la hoja.\n" + "ORDENAR|Rango|Columna|modo → ordena las filas del rango por esa columna (letra de la hoja o número relativo al rango), modo asc o desc (opcional). La primera fila del rango se asume de encabezados.\n" + "REEMPLAZAR|Rango|Buscar|Reemplazo → sustituye un texto en las celdas. Rango opcional: si falta, toda la hoja.\n" + "FILTRO|Rango|Columna|Criterio → aplica un autofiltro (Criterio ej: >=1000). FILTRO_QUITAR → quita los filtros de la hoja activa.\n" + "Puedes dar varias líneas de acción seguidas en una misma respuesta: se ejecutan en orden. Piensa como asistente contable: si piden un informe, primero LIMPIAR y ORDENAR los datos, luego FORMATO de moneda/porcentaje/fecha en los montos, totales o cálculos con COLUMNA (funciones en inglés: SUM, SUMIF, SUMIFS, IF, ROUND, EOMONTH…), GRAFICO o TABLA_EXCEL para el resumen, y hojas nuevas (HOJA/COPIA_HOJA) para organizar por mes o sección. Para gráficos, tablas de Excel y ordenar, el rango debe existir en la hoja activa; si los datos están en otra hoja, indícalo en el TEXTO y pide al usuario cambiar de hoja." + "\n" + "No uses bloques de código ni markdown en las líneas de acción.";
   var $ = function $(id) {
     return document.getElementById(id);
   };
@@ -385,6 +385,25 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
           return;
         }
       }
+      var verbo = null;
+      for (var v = 0; v < VERBOS.length; v++) {
+        if (up.indexOf(VERBOS[v] + "|") === 0 || up === VERBOS[v]) {
+          verbo = VERBOS[v];
+          break;
+        }
+      }
+      if (verbo) {
+        var pp = ln.split("|").map(function (x) {
+          return x.trim();
+        });
+        pp.shift();
+        actions.push({
+          type: verbo.toLowerCase(),
+          parts: pp,
+          desc: describirNuevo(verbo, pp)
+        });
+        return;
+      }
       if (up.indexOf("TEXTO|") === 0) {
         text.push(ln.slice(6));
         return;
@@ -691,6 +710,425 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
       }, _callee10);
     }));
     return _columnaIA.apply(this, arguments);
+  } // ---------- acciones nuevas: hojas, gráficos, formato, limpieza ----------
+  var VERBOS = ["HOJA", "COPIA_HOJA", "BORRAR_HOJA", "RENOMBRAR_HOJA", "GRAFICO", "TABLA_EXCEL", "FORMATO", "LIMPIAR", "ORDENAR", "REEMPLAZAR", "FILTRO", "FILTRO_QUITAR"];
+  function letterToCol(s) {
+    var n = 0,
+      t = String(s).toUpperCase();
+    for (var i = 0; i < t.length; i++) n = n * 26 + (t.charCodeAt(i) - 64);
+    return n - 1;
+  }
+  function validarRango(r) {
+    var t = String(r == null ? "" : r).replace(/\$/g, "").trim().toUpperCase();
+    if (!/^[A-Z]{1,3}[0-9]{1,7}(:[A-Z]{1,3}[0-9]{1,7})?$/.test(t)) throw new Error("Rango inválido: «" + r + "». Usa algo como A1:D20.");
+    return t;
+  }
+  var COLORES = {
+    rojo: "C00000",
+    verde: "107C41",
+    azul: "2F5496",
+    amarillo: "BF8F00",
+    naranja: "C55A11",
+    gris: "808080",
+    negro: "000000",
+    blanco: "FFFFFF",
+    morado: "7030A0"
+  };
+  function resolverColor(v) {
+    var t = String(v == null ? "" : v).trim().toLowerCase().replace(/^#/, "");
+    if (COLORES[t]) return "#" + COLORES[t];
+    if (/^[0-9a-f]{6}$/.test(t)) return "#" + t.toUpperCase();
+    throw new Error("Color no reconocido: «" + v + "». Usa rojo, verde, azul, amarillo, naranja, gris, negro, blanco, morado o hex #RRGGBB.");
+  }
+  var FORMATOS_NUM = {
+    moneda: "#,##0.00",
+    dolar: '"$"#,##0.00',
+    euro: '#,##0.00 "€"',
+    porcentaje: "0.00%",
+    porcentaje0: "0%",
+    fecha: "dd/mm/yyyy",
+    hora: "hh:mm",
+    numero: "#,##0.00",
+    entero: "0",
+    miles: "#,##0",
+    texto: "@"
+  };
+  function describirNuevo(verbo, pp) {
+    switch (verbo) {
+      case "HOJA": return "hoja «" + (pp[0] || "") + "»";
+      case "COPIA_HOJA": return "copia de hoja «" + (pp[0] || "") + "» como «" + (pp[1] || "") + "»";
+      case "BORRAR_HOJA": return "borrado de hoja «" + (pp[0] || "") + "»";
+      case "RENOMBRAR_HOJA": return "renombrar hoja «" + (pp[0] || "") + "» → «" + (pp[1] || "") + "»";
+      case "GRAFICO": return "gráfico " + (pp[0] || "") + " con " + (pp[1] || "");
+      case "TABLA_EXCEL": return "tabla de Excel en " + (pp[0] || "");
+      case "FORMATO": return "formato (" + (pp[1] || "") + ") en " + (pp[0] || "");
+      case "LIMPIAR": return "limpieza (" + (pp[0] || "") + ")";
+      case "ORDENAR": return "orden por " + (pp[1] || "");
+      case "REEMPLAZAR": return "reemplazo de «" + (pp[1] || "") + "»";
+      case "FILTRO": return "filtro en " + (pp[0] || "");
+      case "FILTRO_QUITAR": return "quitar filtros";
+    }
+    return verbo.toLowerCase();
+  }
+  function hojaCrear(a) {
+    needExcel();
+    var nombre = String(a.parts[0] || "").trim();
+    if (!nombre) throw new Error("Falta el nombre de la hoja.");
+    return Excel.run(function (ctx) {
+      var existente = ctx.workbook.worksheets.getItemOrNullObject(nombre);
+      return ctx.sync().then(function () {
+        if (!existente.isNullObject) throw new Error("Ya existe una hoja llamada «" + nombre + "».");
+        var ws = ctx.workbook.worksheets.add(nombre);
+        ws.activate();
+        return ctx.sync().then(function () {
+          return "Hoja «" + nombre + "» creada y activada.";
+        });
+      });
+    });
+  }
+  function hojaCopiar(a) {
+    needExcel();
+    var origen = String(a.parts[0] || "").trim(), nueva = String(a.parts[1] || "").trim();
+    if (!origen || !nueva) throw new Error("Formato: COPIA_HOJA|HojaOrigen|NombreCopia");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItemOrNullObject(origen);
+      var existe = ctx.workbook.worksheets.getItemOrNullObject(nueva);
+      return ctx.sync().then(function () {
+        if (ws.isNullObject) throw new Error("No existe una hoja llamada «" + origen + "».");
+        if (!existe.isNullObject) throw new Error("Ya existe una hoja llamada «" + nueva + "».");
+        var copia = ws.copy();
+        copia.name = nueva;
+        copia.activate();
+        return ctx.sync().then(function () {
+          return "Hoja «" + origen + "» copiada como «" + nueva + "».";
+        });
+      });
+    });
+  }
+  function hojaBorrar(a) {
+    needExcel();
+    var nombre = String(a.parts[0] || "").trim();
+    if (!nombre) throw new Error("Falta el nombre de la hoja a borrar.");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItemOrNullObject(nombre);
+      var todas = ctx.workbook.worksheets;
+      todas.load("items");
+      return ctx.sync().then(function () {
+        if (ws.isNullObject) throw new Error("No existe una hoja llamada «" + nombre + "».");
+        if (todas.items.length <= 1) throw new Error("No puedo borrar la única hoja del libro.");
+        ws["delete"]();
+        return ctx.sync().then(function () {
+          return "Hoja «" + nombre + "» eliminada.";
+        });
+      });
+    });
+  }
+  function hojaRenombrar(a) {
+    needExcel();
+    var viejo = String(a.parts[0] || "").trim(), nuevo = String(a.parts[1] || "").trim();
+    if (!viejo || !nuevo) throw new Error("Formato: RENOMBRAR_HOJA|NombreActual|NombreNuevo");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getItemOrNullObject(viejo);
+      var existe = ctx.workbook.worksheets.getItemOrNullObject(nuevo);
+      return ctx.sync().then(function () {
+        if (ws.isNullObject) throw new Error("No existe una hoja llamada «" + viejo + "».");
+        if (!existe.isNullObject) throw new Error("Ya existe una hoja llamada «" + nuevo + "».");
+        ws.name = nuevo;
+        return ctx.sync().then(function () {
+          return "Hoja «" + viejo + "» renombrada a «" + nuevo + "».";
+        });
+      });
+    });
+  }
+  function crearGrafico(a) {
+    needExcel();
+    var tipo = String(a.parts[0] || "columnas").trim().toLowerCase();
+    var mapa = {
+      linea: "Line", lineas: "Line",
+      columna: "ColumnClustered", columnas: "ColumnClustered",
+      barra: "BarClustered", barras: "BarClustered",
+      pastel: "Pie", circular: "Pie", torta: "Pie",
+      area: "Area", dispersion: "XYScatter", puntos: "XYScatter"
+    };
+    var tipoExcel = mapa[tipo];
+    if (!tipoExcel) throw new Error("Tipo de gráfico no reconocido: " + tipo + ". Usa: lineas, columnas, barras, pastel, area o dispersion.");
+    var fuente = validarRango(a.parts[1]);
+    var titulo = String(a.parts[2] || "").trim() || "Gráfico";
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      ws.load("name");
+      var ur = ws.getUsedRangeOrNullObject(true);
+      ur.load(["rowIndex", "columnIndex", "rowCount", "columnCount"]);
+      return ctx.sync().then(function () {
+        var chart = ws.charts.add(tipoExcel, ws.getRange(fuente), "Columns");
+        chart.title.text = titulo;
+        var fila = ur.isNullObject ? 0 : ur.rowIndex + ur.rowCount + 1;
+        var colIni = ur.isNullObject ? 0 : ur.columnIndex;
+        chart.setPosition(colLetter(colIni) + (fila + 1), colLetter(colIni + 9) + (fila + 19));
+        return ctx.sync().then(function () {
+          return "Gráfico «" + titulo + "» (" + tipo + ") creado en la hoja «" + ws.name + "», colocado en " + colLetter(colIni) + (fila + 1) + ".";
+        });
+      });
+    });
+  }
+  function crearTablaExcel(a) {
+    needExcel();
+    var rango = validarRango(a.parts[0]);
+    var nombre = String(a.parts[1] || "").trim().replace(/\s+/g, "_");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      var t = ws.tables.add(rango, true);
+      if (nombre) t.name = nombre;
+      t.style = "TableStyleMedium2";
+      return ctx.sync().then(function () {
+        return "Tabla de Excel creada en " + rango + (nombre ? " con nombre «" + nombre + "»" : "") + ", con filtros y estilo.";
+      });
+    });
+  }
+  function aplicarFormato(a) {
+    needExcel();
+    var rango = validarRango(a.parts[0]);
+    var estilos = String(a.parts[1] || "").split(/[,;]/).map(function (x) {
+      return x.trim().toLowerCase();
+    }).filter(Boolean);
+    if (!estilos.length) throw new Error("Falta la lista de estilos (ej: moneda, negrita).");
+    var numFmt = null;
+    return Excel.run(function (ctx) {
+      var rng = ctx.workbook.worksheets.getActiveWorksheet().getRange(rango);
+      rng.load(["rowCount", "columnCount", "address"]);
+      return ctx.sync().then(function () {
+        for (var i = 0; i < estilos.length; i++) {
+          var e = estilos[i];
+          if (FORMATOS_NUM[e]) numFmt = FORMATOS_NUM[e];
+          else if (e === "negrita" || e === "bold") rng.format.font.bold = true;
+          else if (e === "normal") rng.format.font.bold = false;
+          else if (e === "cursiva" || e === "italica") rng.format.font.italic = true;
+          else if (e === "subrayado") rng.format.font.underline = "Single";
+          else if (e === "centro") rng.format.horizontalAlignment = "Center";
+          else if (e === "izquierda") rng.format.horizontalAlignment = "Left";
+          else if (e === "derecha") rng.format.horizontalAlignment = "Right";
+          else if (e === "ajustar") rng.format.autofitColumns();
+          else if (e === "bordes") rng.format.borders.load("items");
+          else if (e.indexOf("color") === 0) rng.format.font.color = resolverColor(e.indexOf("=") >= 0 ? e.slice(e.indexOf("=") + 1) : e.slice(5));
+          else if (e.indexOf("fondo") === 0) rng.format.fill.color = resolverColor(e.indexOf("=") >= 0 ? e.slice(e.indexOf("=") + 1) : e.slice(5));
+          else throw new Error("Estilo no reconocido: " + e + ". Usa moneda, dolar, euro, porcentaje, fecha, numero, entero, texto, negrita, cursiva, centro, bordes, color=xxx, fondo=xxx, ajustar.");
+        }
+        return ctx.sync();
+      }).then(function () {
+        if (numFmt) {
+          var mat = [];
+          for (var f = 0; f < rng.rowCount; f++) {
+            var filaArr = [];
+            for (var c = 0; c < rng.columnCount; c++) filaArr.push(numFmt);
+            mat.push(filaArr);
+          }
+          rng.numberFormat = mat;
+        }
+        if (rng.format.borders.items && rng.format.borders.items.length) {
+          rng.format.borders.items.forEach(function (b) {
+            b.style = "Continuous";
+            b.color = "#D0D0D0";
+            b.weight = "Thin";
+          });
+        }
+        return ctx.sync().then(function () {
+          return "Formato aplicado en " + rng.address + ": " + estilos.join(", ") + ".";
+        });
+      });
+    });
+  }
+  function limpiarDatos(a) {
+    needExcel();
+    var accion = String(a.parts[0] || "espacios").trim().toLowerCase();
+    var rango = a.parts[1] ? validarRango(a.parts[1]) : null;
+    var validas = ["espacios", "duplicados", "filas_vacias", "mayusculas", "minusculas"];
+    if (validas.indexOf(accion) < 0) throw new Error("Limpieza no reconocida: " + accion + ". Usa espacios, duplicados, filas_vacias, mayusculas o minusculas.");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      var rng = rango ? ws.getRange(rango) : ws.getUsedRange(true);
+      rng.load(["values", "rowIndex", "rowCount", "columnCount", "address"]);
+      return ctx.sync().then(function () {
+        var vals = rng.values, filas = vals.length, cols = vals[0] ? vals[0].length : 0;
+        var cambios = 0, salida = [];
+        function transformar(v) {
+          if (typeof v !== "string") return v;
+          var nv = v;
+          if (accion === "espacios") nv = v.replace(/\s+/g, " ").trim();
+          else if (accion === "mayusculas") nv = v.toUpperCase();
+          else if (accion === "minusculas") nv = v.toLowerCase();
+          if (nv !== v) cambios++;
+          return nv;
+        }
+        if (accion === "espacios" || accion === "mayusculas" || accion === "minusculas") {
+          for (var f = 0; f < filas; f++) salida.push(vals[f].map(transformar));
+        } else {
+          var vistos = {}, filaVacia = [];
+          for (var c2 = 0; c2 < cols; c2++) filaVacia.push("");
+          for (var f2 = 0; f2 < filas; f2++) {
+            var fila = vals[f2], vacia = true;
+            for (var c = 0; c < cols; c++) {
+              if (fila[c] !== "" && fila[c] !== null) {
+                vacia = false;
+                break;
+              }
+            }
+            if (accion === "filas_vacias") {
+              if (vacia) cambios++;
+              else salida.push(fila);
+            } else {
+              var clave = JSON.stringify(fila.map(function (x) {
+                return String(x).trim().toLowerCase();
+              }));
+              if (vistos[clave]) cambios++;
+              else {
+                vistos[clave] = true;
+                salida.push(fila);
+              }
+            }
+          }
+          while (salida.length < filas) salida.push(filaVacia.slice());
+        }
+        rng.values = salida;
+        return ctx.sync().then(function () {
+          var msj = accion === "espacios" ? "Espacios extra quitados en " + cambios + " celdas" : accion === "duplicados" ? "Filas duplicadas eliminadas: " + cambios : accion === "filas_vacias" ? "Filas vacías eliminadas: " + cambios : accion === "mayusculas" ? "Texto en MAYÚSCULAS en " + cambios + " celdas" : "Texto en minúsculas en " + cambios + " celdas";
+          return msj + " (rango " + rng.address + ").";
+        });
+      });
+    });
+  }
+  function ordenarDatos(a) {
+    needExcel();
+    var rango = validarRango(a.parts[0]);
+    var columna = String(a.parts[1] || "1").trim().toUpperCase();
+    var modo = String(a.parts[2] || "asc").trim().toLowerCase();
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      var rng = ws.getRange(rango);
+      rng.load(["columnIndex", "columnCount"]);
+      return ctx.sync().then(function () {
+        var idx = /^[0-9]+$/.test(columna) ? parseInt(columna, 10) - 1 : letterToCol(columna) - rng.columnIndex;
+        if (idx < 0 || idx >= rng.columnCount) throw new Error("La columna " + columna + " no está dentro del rango " + rango + ".");
+        rng.sort.apply([{
+          index: idx,
+          ascending: modo !== "desc"
+        }], false, true);
+        return ctx.sync().then(function () {
+          return "Datos ordenados por la columna " + columna + " (" + (modo === "desc" ? "descendente" : "ascendente") + ").";
+        });
+      });
+    });
+  }
+  function reemplazarTexto(a) {
+    needExcel();
+    var rango = a.parts[0] ? validarRango(a.parts[0]) : null;
+    var buscar = a.parts[1], nuevo = a.parts[2] == null ? "" : a.parts[2];
+    if (buscar == null || buscar === "") throw new Error("Formato: REEMPLAZAR|Rango|Buscar|Reemplazo");
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      var rng = rango ? ws.getRange(rango) : ws.getUsedRange(true);
+      rng.load(["values", "address"]);
+      return ctx.sync().then(function () {
+        var vals = rng.values, cambios = 0;
+        for (var f = 0; f < vals.length; f++) {
+          for (var c = 0; c < vals[f].length; c++) {
+            if (typeof vals[f][c] === "string" && vals[f][c].indexOf(buscar) >= 0) {
+              vals[f][c] = vals[f][c].split(buscar).join(nuevo);
+              cambios++;
+            }
+          }
+        }
+        if (!cambios) return "No encontré «" + buscar + "» en " + rng.address + ".";
+        rng.values = vals;
+        return ctx.sync().then(function () {
+          return "Reemplazado «" + buscar + "» → «" + nuevo + "» en " + cambios + " celdas (" + rng.address + ").";
+        });
+      });
+    });
+  }
+  function aplicarFiltro(a) {
+    needExcel();
+    var rango = validarRango(a.parts[0]);
+    var columna = String(a.parts[1] || "1").trim().toUpperCase();
+    var criterio = String(a.parts[2] || "").trim();
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      var rng = ws.getRange(rango);
+      rng.load(["columnIndex", "columnCount"]);
+      return ctx.sync().then(function () {
+        var idx = /^[0-9]+$/.test(columna) ? parseInt(columna, 10) - 1 : letterToCol(columna) - rng.columnIndex;
+        if (idx < 0 || idx >= rng.columnCount) throw new Error("La columna " + columna + " no está dentro del rango " + rango + ".");
+        ws.autoFilter.apply(rng, idx, criterio ? {
+          criterion1: criterio
+        } : {});
+        return ctx.sync().then(function () {
+          return "Filtro aplicado en " + rango + ", columna " + columna + (criterio ? ", criterio «" + criterio + "»" : " (solo desplegables)") + ".";
+        });
+      });
+    });
+  }
+  function quitarFiltro() {
+    needExcel();
+    return Excel.run(function (ctx) {
+      var ws = ctx.workbook.worksheets.getActiveWorksheet();
+      ws.autoFilter.clearCriteria();
+      return ctx.sync().then(function () {
+        return "Filtros quitados de la hoja activa.";
+      });
+    });
+  }
+  var EJECUTORES = {
+    tabla: function (a) {
+      return escribirTabla(a);
+    },
+    ia: function (a, nombre, li) {
+      return columnaIA(a, function (p) {
+        actState(li, "run", nombre + ": " + p);
+      });
+    },
+    formula: function (a) {
+      return columnaFormula(a);
+    },
+    hoja: function (a) {
+      return hojaCrear(a);
+    },
+    copia_hoja: function (a) {
+      return hojaCopiar(a);
+    },
+    borrar_hoja: function (a) {
+      return hojaBorrar(a);
+    },
+    renombrar_hoja: function (a) {
+      return hojaRenombrar(a);
+    },
+    grafico: function (a) {
+      return crearGrafico(a);
+    },
+    tabla_excel: function (a) {
+      return crearTablaExcel(a);
+    },
+    formato: function (a) {
+      return aplicarFormato(a);
+    },
+    limpiar: function (a) {
+      return limpiarDatos(a);
+    },
+    ordenar: function (a) {
+      return ordenarDatos(a);
+    },
+    reemplazar: function (a) {
+      return reemplazarTexto(a);
+    },
+    filtro: function (a) {
+      return aplicarFiltro(a);
+    },
+    filtro_quitar: function () {
+      return quitarFiltro();
+    }
+  };
+  function ejecutarAccion(a, nombre, li) {
+    var fn = EJECUTORES[a.type];
+    if (!fn) return Promise.reject(new Error("Acción no soportada: " + a.type));
+    return fn(a, nombre, li);
   }
   function enviar() {
     return _enviar.apply(this, arguments);
@@ -786,36 +1224,12 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
               break;
             }
             a = parsed.actions[i];
-            nombre = a.type === "tabla" ? "tabla en " + a.cell : "«" + a.header + "»";
+            nombre = a.desc || (a.type === "tabla" ? "tabla en " + a.cell : "«" + a.header + "»");
             li = addAct(bub, "Creando " + nombre + "…");
             _context11.p = 12;
-            if (!(a.type === "tabla")) {
-              _context11.n = 14;
-              break;
-            }
             _context11.n = 13;
-            return escribirTabla(a);
+            return ejecutarAccion(a, nombre, li);
           case 13:
-            msg = _context11.v;
-            _context11.n = 18;
-            break;
-          case 14:
-            if (!(a.type === "ia")) {
-              _context11.n = 16;
-              break;
-            }
-            _context11.n = 15;
-            return columnaIA(a, function (p) {
-              actState(li, "run", nombre + ": " + p);
-            });
-          case 15:
-            msg = _context11.v;
-            _context11.n = 18;
-            break;
-          case 16:
-            _context11.n = 17;
-            return columnaFormula(a);
-          case 17:
             msg = _context11.v;
           case 18:
             actState(li, "ok", msg);
@@ -986,7 +1400,7 @@ function _asyncToGenerator(n) { return function () { var t = this, e = arguments
     greet();
   }
   function greet() {
-    addMsg("bot", "Hola 👋 Soy DeepSeek dentro de Excel. Pregúntame sobre tus datos, pídeme **«crea una columna con el total»** o adjunta una imagen con 📎 (también puedes pegarla o arrastrarla) y te paso su tabla a Excel.");
+    addMsg("bot", "Hola 👋 Soy DeepSeek dentro de Excel. Puedo **crear columnas** (con fórmulas o con IA), **pasar tablas** desde imágenes, y ahora también:\n• Crear, copiar, renombrar y borrar **hojas**\n• **Gráficos** de líneas, columnas, barras, pastel, área y dispersión\n• **Formato contable**: moneda, porcentaje, fecha, negrita, colores, bordes\n• **Limpieza** de datos (espacios, duplicados, filas vacías), **orden**, reemplazos y **filtros**\n• Convertir rangos en **tablas de Excel** con filtros\n\nPídeme algo como «ordena por fecha, aplica formato de moneda a los montos y crea una hoja llamada Resumen con un gráfico».");
   }
   if (window.Office && Office.onReady) {
     Office.onReady(function () {
